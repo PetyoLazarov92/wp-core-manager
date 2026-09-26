@@ -2,7 +2,7 @@
 # ============================================================
 # wpcore installer
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/main/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/install.sh | sudo bash
 # ============================================================
 
 set -euo pipefail
@@ -21,11 +21,11 @@ warn()    { echo -e "${YELLOW}⚠${RESET} $*"; }
 die()     { echo -e "${RED}✗ Error:${RESET} $*" >&2; exit 1; }
 
 # ── Must run as root ──────────────────────────────────────────
-[[ $EUID -eq 0 ]] || die "Please run with sudo:\n  curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/main/install.sh | sudo bash"
+[[ $EUID -eq 0 ]] || die "Please run with sudo:\n  curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/install.sh | sudo bash"
 
 INSTALL_DIR="/usr/local/bin"
 BINARY="$INSTALL_DIR/wpcore"
-RAW_URL="https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/main/wpcore"
+RAW_URL="https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/wpcore"
 
 echo -e "\n${BOLD}wpcore installer${RESET}\n"
 

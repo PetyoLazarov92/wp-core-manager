@@ -68,7 +68,7 @@ sudo wpcore switch local.mysite.com 6.7.1
 ### Quick Install (recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/install.sh | sudo bash
 ```
 
 This will:
@@ -79,7 +79,7 @@ This will:
 ### Manual Install
 
 ```bash
-sudo curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/main/wpcore \
+sudo curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/wpcore \
     -o /usr/local/bin/wpcore
 sudo chmod +x /usr/local/bin/wpcore
 sudo wpcore init
