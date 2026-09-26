@@ -145,7 +145,7 @@ _wpcore() {
     prev="\${COMP_WORDS[COMP_CWORD-1]}"
     words=("\${COMP_WORDS[@]}")
 
-    local commands="init add remove-core list sites status link unlink switch wp install-completion help"
+    local commands="init add remove-core list available sites status link unlink switch wp install-completion help"
 
     if [[ \$COMP_CWORD -eq 1 ]]; then
         COMPREPLY=( \$(compgen -W "\$commands" -- "\$cur") )
@@ -181,10 +181,44 @@ COMPLETION
     info "Run 'source $completion_file' or open a new terminal to activate."
 }
 
+# Print the current latest stable WordPress version (from wordpress.org).
+_latest_wp_version() {
+    local api="https://api.wordpress.org/core/stable-check/1.0/"
+    local json
+    if command -v curl &>/dev/null; then
+        json=$(curl -fsSL "$api") || return 1
+    elif command -v wget &>/dev/null; then
+        json=$(wget -qO- "$api") || return 1
+    else
+        return 1
+    fi
+
+    # The single version whose status is "latest"
+    local latest
+    latest=$(echo "$json" \
+        | grep -oE '"[0-9][0-9.]*"[[:space:]]*:[[:space:]]*"latest"' \
+        | sed -E 's/"([0-9][0-9.]*)".*/\1/' \
+        | sort -V | tail -1)
+
+    [[ -n "$latest" ]] && echo "$latest"
+}
+
 # ────────────────────────────────────────────────────────────
 cmd_add() {
     local version="${1:-}"
-    [[ -n "$version" ]] || die "Specify a version: wpcore add <version>  (e.g. wpcore add 6.9.1)"
+
+    # No version given → look up the current latest release and offer it
+    if [[ -z "$version" ]]; then
+        info "No version specified — checking for the latest release..."
+        local latest
+        latest=$(_latest_wp_version) \
+            || die "Could not determine the latest version. Specify one: wpcore add <version>"
+        info "Latest WordPress release is ${GREEN}${latest}${RESET}."
+        read -rp "Install WordPress $latest now? [Y/n] " confirm
+        [[ -z "$confirm" || "$confirm" =~ ^[Yy]$ ]] \
+            || { info "Aborted. Run 'wpcore available' to see all versions."; exit 0; }
+        version="$latest"
+    fi
 
     local destdir="$CORES_DIR/$version"
 
@@ -360,6 +394,78 @@ cmd_list_cores() {
         fi
     done
     echo
+}
+
+# ────────────────────────────────────────────────────────────
+cmd_list_remote() {
+    local show_all=0
+    case "${1:-}" in
+        --all|-a) show_all=1 ;;
+        "") ;;
+        *) die "Usage: wpcore available [--all]" ;;
+    esac
+
+    local api="https://api.wordpress.org/core/stable-check/1.0/"
+    info "Fetching available versions from wordpress.org..."
+
+    local json
+    if command -v curl &>/dev/null; then
+        json=$(curl -fsSL "$api") || die "Failed to fetch version list from $api"
+    elif command -v wget &>/dev/null; then
+        json=$(wget -qO- "$api") || die "Failed to fetch version list from $api"
+    else
+        die "Neither curl nor wget is available to query the WordPress API."
+    fi
+
+    # Flatten the JSON object into sorted "version:status" lines.
+    # The API formats entries as  "6.9.1" : "latest"  (note the spaces).
+    local pairs
+    pairs=$(echo "$json" \
+        | grep -oE '"[0-9][0-9.]*"[[:space:]]*:[[:space:]]*"[a-z]+"' \
+        | sed -E 's/"([0-9][0-9.]*)"[[:space:]]*:[[:space:]]*"([a-z]+)"/\1:\2/' \
+        | sort -t: -k1,1 -V) || true
+
+    [[ -n "$pairs" ]] || die "Could not parse version list from the API response."
+
+    # Record status per version and the highest patch per major.minor branch
+    declare -A branch_latest status_of
+    while IFS=: read -r ver status; do
+        status_of["$ver"]="$status"
+        local branch="${ver%.*}"
+        [[ "$ver" == *.*.* ]] || branch="$ver"   # x.y stays as its own branch
+        branch_latest["$branch"]="$ver"
+    done <<< "$pairs"
+
+    local -a display
+    if [[ $show_all -eq 1 ]]; then
+        mapfile -t display < <(echo "$pairs" | cut -d: -f1)
+    else
+        mapfile -t display < <(printf '%s\n' "${branch_latest[@]}" | sort -V)
+    fi
+
+    echo -e "\n${BOLD}WordPress versions available to install:${RESET}"
+    echo -e "${BLUE}$(printf '─%.0s' {1..50})${RESET}"
+
+    for ver in "${display[@]}"; do
+        local status="${status_of[$ver]:-}"
+        local installed=""
+        [[ -d "$CORES_DIR/$ver" ]] && installed="  ${CYAN}[installed]${RESET}"
+
+        local label
+        case "$status" in
+            latest)   label="${GREEN}$ver${RESET}   (latest)" ;;
+            outdated) label="${YELLOW}$ver${RESET}" ;;
+            insecure) label="${RED}$ver${RESET}   (insecure)" ;;
+            *)        label="$ver" ;;
+        esac
+        echo -e "  ${label}${installed}"
+    done
+
+    echo
+    if [[ $show_all -eq 0 ]]; then
+        info "Showing the latest patch of each branch. Use ${CYAN}wpcore available --all${RESET} to list every release."
+    fi
+    info "Install one with: ${CYAN}sudo wpcore add <version>${RESET}"
 }
 
 # ────────────────────────────────────────────────────────────
@@ -665,11 +771,14 @@ ${BOLD}USAGE:${RESET}
   wpcore <command> [arguments]
 
 ${BOLD}CORES:${RESET}
-  ${CYAN}add <version>${RESET}            Download and install a new WP core version
+  ${CYAN}add [version]${RESET}            Download and install a WP core version
                            Installs a smart wp-load dispatcher into the core
-                           e.g. sudo wpcore add 6.6.2
+                           With no version, offers the latest release
+                           e.g. sudo wpcore add 6.6.2  |  sudo wpcore add
   ${CYAN}remove-core <version>${RESET}    Remove a core version (only if unused)
-  ${CYAN}list${RESET}                     List all available core versions
+  ${CYAN}list${RESET}                     List locally installed core versions
+  ${CYAN}available [--all]${RESET}        List core versions available to download
+                           from wordpress.org (latest per branch; --all = every release)
 
 ${BOLD}SITES:${RESET}
   ${CYAN}sites${RESET}                    List all sites and their core versions
@@ -704,17 +813,18 @@ fi
 
 # ── Router ────────────────────────────────────────────────────
 case "${1:-help}" in
-    help|--help|-h) cmd_help ;;
+    help|--help|-h)      cmd_help ;;
     init)                cmd_init ;;
     install-completion)  cmd_install_completion ;;
-    add)          load_config; cmd_add "${2:-}" ;;
-    remove-core)  load_config; cmd_remove_core "${2:-}" ;;
-    list)         load_config; cmd_list_cores ;;
-    sites)        load_config; cmd_list_sites ;;
-    status)       load_config; cmd_status ;;
-    link)         load_config; cmd_link "${2:-}" "${3:-}" ;;
-    unlink)       load_config; cmd_unlink "${2:-}" ;;
-    switch)       load_config; cmd_switch "${2:-}" "${3:-}" ;;
-    wp)           load_config; shift; cmd_wpcli "$@" ;;
-    *)            error "Unknown command: ${1}"; cmd_help; exit 1 ;;
+    add)                 load_config; cmd_add "${2:-}" ;;
+    remove-core)         load_config; cmd_remove_core "${2:-}" ;;
+    list)                load_config; cmd_list_cores ;;
+    available|remote)    load_config; cmd_list_remote "${2:-}" ;;
+    sites)               load_config; cmd_list_sites ;;
+    status)              load_config; cmd_status ;;
+    link)                load_config; cmd_link "${2:-}" "${3:-}" ;;
+    unlink)              load_config; cmd_unlink "${2:-}" ;;
+    switch)              load_config; cmd_switch "${2:-}" "${3:-}" ;;
+    wp)                  load_config; shift; cmd_wpcli "$@" ;;
+    *)                   error "Unknown command: ${1}"; cmd_help; exit 1 ;;
 esac
