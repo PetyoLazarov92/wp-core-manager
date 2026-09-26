@@ -124,6 +124,7 @@ Edit this file to match your server layout before adding any cores.
 | `sudo wpcore add <version>` | Download and install a WordPress core version |
 | `sudo wpcore remove-core <version>` | Remove a core version (blocked if a site is using it) |
 | `wpcore list` | List all installed core versions |
+| `wpcore available [--all]` | List core versions available to download |
 
 ### Site Management
 
