@@ -661,7 +661,14 @@ _copy_wp_load_to_site() {
 
     [[ -f "$dist" ]] || die "wp-load.php.dist missing in $corepath — re-run: wpcore add $(basename "$corepath")"
 
-    cp "$dist" "$dest"
+    # Keep the opening "<?php" line first, then add the marker comment that
+    # _remove_symlinks looks for, then the rest of the original file.
+    {
+        head -n 1 "$dist"
+        echo "// wpcore-managed: copied from the shared core by wpcore, do not edit"
+        tail -n +2 "$dist"
+    } > "$dest"
+
     chown "$APACHE_USER:$APACHE_USER" "$dest" 2>/dev/null || true
     chmod 644 "$dest"
 }
@@ -783,7 +790,7 @@ ${BOLD}CORES:${RESET}
 ${BOLD}SITES:${RESET}
   ${CYAN}sites${RESET}                    List all sites and their core versions
   ${CYAN}link <site> <version>${RESET}    Link a site to a core (initial setup)
-                           Creates wp-load.php symlink + wp-load.site.php
+                           Symlinks the core files and copies wp-load.php into the site
                            e.g. sudo wpcore link local.site1.com 6.5.5
   ${CYAN}switch <site> <version>${RESET}  Switch a site to a different core version
                            e.g. sudo wpcore switch local.site1.com 6.6.2
