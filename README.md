@@ -5,6 +5,7 @@
 ![Platform: Linux](https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux&logoColor=black)
 ![Requires Root](https://img.shields.io/badge/Requires-sudo-red)
 ![WP-CLI Compatible](https://img.shields.io/badge/WP--CLI-Compatible-21759B?logo=wordpress&logoColor=white)
+[![Latest WordPress](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.wordpress.org%2Fcore%2Fversion-check%2F1.7%2F&query=%24.offers%5B0%5D.version&label=latest%20WordPress&logo=wordpress&logoColor=white&color=21759B&cacheSeconds=3600)](https://wordpress.org/download/)
 
 A **single Bash script** that lets one server host **dozens of WordPress sites while sharing a small set of versioned WordPress cores** stored in a central directory. Switch any site between core versions in seconds, with zero downtime and automatic OPcache flushing.
 
