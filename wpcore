@@ -591,6 +591,28 @@ _install_core_dispatcher() {
 // ── Build candidate site directories ────────────────────────────────────────
 $_wpcore_candidates = [];
 
+// 0. Web: locate the site from the script actually being served
+//    SCRIPT_FILENAME is the un-resolved (symlink) path inside the site dir, so
+//    walking up from it finds the site root even when DOCUMENT_ROOT points at a
+//    parent vhost (Apache Alias, nested installs). CONTEXT_DOCUMENT_ROOT is the
+//    Alias target on Apache 2.4. Both are no-ops for plain vhost sites.
+if ( ! empty( $_SERVER['SCRIPT_FILENAME'] ) ) {
+    $_wpcore_dir = dirname( $_SERVER['SCRIPT_FILENAME'] );
+    while ( $_wpcore_dir && $_wpcore_dir !== dirname( $_wpcore_dir ) ) {
+        $_wpcore_probe = $_wpcore_dir . '/wp-load.php';
+        if ( is_file( $_wpcore_probe ) && realpath( $_wpcore_probe ) !== __FILE__ ) {
+            $_wpcore_candidates[] = rtrim( $_wpcore_dir, '/' );
+            break;
+        }
+        $_wpcore_dir = dirname( $_wpcore_dir );
+    }
+    unset( $_wpcore_dir, $_wpcore_probe );
+}
+
+if ( ! empty( $_SERVER['CONTEXT_DOCUMENT_ROOT'] ) && ! in_array( rtrim( $_SERVER['CONTEXT_DOCUMENT_ROOT'], '/' ), $_wpcore_candidates, true ) ) {
+    $_wpcore_candidates[] = rtrim( $_SERVER['CONTEXT_DOCUMENT_ROOT'], '/' );
+}
+
 // 1. Web: DOCUMENT_ROOT is the vhost root
 if ( ! empty( $_SERVER['DOCUMENT_ROOT'] ) ) {
     $_wpcore_candidates[] = rtrim( $_SERVER['DOCUMENT_ROOT'], '/' );
