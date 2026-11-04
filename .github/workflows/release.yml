@@ -1,0 +1,47 @@
+name: Release
+
+# A pushed vX.Y.Z tag that matches VERSION publishes wpcore, its checksum and install.sh as a
+# GitHub release, its notes from the tag's CHANGELOG.md section.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: The tag matches VERSION
+        run: |
+          v="$(cat VERSION)"
+          if [ "${GITHUB_REF_NAME}" != "v${v}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match VERSION ${v}"
+            exit 1
+          fi
+
+      - name: Check the scripts
+        run: |
+          bash -n wpcore install.sh
+          shellcheck -S error wpcore
+          shellcheck -x install.sh
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          awk -v h="### ${GITHUB_REF_NAME} " 'index($0, h) == 1 { f = 1; next } /^### v/ { f = 0 } f' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha256sum wpcore > wpcore.sha256
+          cat wpcore.sha256
+          gh release create "${GITHUB_REF_NAME}" --verify-tag --title "${GITHUB_REF_NAME}" --notes-file notes.md \
+            wpcore wpcore.sha256 install.sh

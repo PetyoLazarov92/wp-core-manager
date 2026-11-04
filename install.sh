@@ -1,85 +1,103 @@
 #!/usr/bin/env bash
-# ============================================================
-# wpcore installer
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/install.sh | sudo bash
-# ============================================================
-
+# Installs wpcore from its newest release, or the one given with --version: downloads the
+# release's wpcore and its checksum, checks both, and puts wpcore in /usr/local/bin in one step.
+# Then it offers to run `wpcore init`, which writes /etc/wpcore.conf.
+#
+#   curl -fsSL https://webtimeless.cloud/wpcore-manager.sh | sudo bash
+#   sudo bash install.sh [--version v1.0.0] [--repo owner/name] [--dry-run]
+#
+# --dry-run downloads and checks wpcore, then stops; it needs no sudo.
 set -euo pipefail
 
-# ── Colors ───────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-YELLOW='\033[1;33m'
-BOLD='\033[1m'
-RESET='\033[0m'
+SLUG="${WPCORE_REPO:-PetyoLazarov92/wp-core-manager}"
+# Where release files are downloaded from, and where wpcore goes; tests point both at temp folders.
+BASE="${WPCORE_DOWNLOAD_BASE:-}"
+BIN_DIR="${WPCORE_BIN_DIR:-/usr/local/bin}"
+VERSION=""
+DRY_RUN=0
+TAG_RE='^v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,6}$'
 
-info()    { echo -e "${CYAN}▸${RESET} $*"; }
-success() { echo -e "${GREEN}✓${RESET} $*"; }
-warn()    { echo -e "${YELLOW}⚠${RESET} $*"; }
-die()     { echo -e "${RED}✗ Error:${RESET} $*" >&2; exit 1; }
+step() { printf '==> %s\n' "$*"; }
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
 
-# ── Must run as root ──────────────────────────────────────────
-[[ $EUID -eq 0 ]] || die "Please run with sudo:\n  curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/install.sh | sudo bash"
+while (($# > 0)); do
+  case "$1" in
+    --version) VERSION="${2:?--version needs a release, like v1.0.0}"; shift ;;
+    --repo) SLUG="${2:?--repo needs owner/name}"; shift ;;
+    --dry-run) DRY_RUN=1 ;;
+    -h | --help) sed -n '2,9p' "${BASH_SOURCE[0]:-install.sh}" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) die "unknown option: $1 (see --help)" ;;
+  esac
+  shift
+done
 
-INSTALL_DIR="/usr/local/bin"
-BINARY="$INSTALL_DIR/wpcore"
-RAW_URL="https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/wpcore"
+if [[ ! "$SLUG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*/[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]; then
+  die "not a repository: $SLUG (like owner/name)"
+fi
+if [[ -n "$VERSION" && ! "$VERSION" =~ $TAG_RE ]]; then
+  die "not a release: $VERSION (like v1.0.0)"
+fi
+# Installing into /usr/local/bin needs root; a dry run, or a test's own folder, does not.
+if ((!DRY_RUN)) && [[ -z "${WPCORE_BIN_DIR:-}" && ${EUID:-$(id -u)} -ne 0 ]]; then
+  die "installing into $BIN_DIR needs root: curl -fsSL https://webtimeless.cloud/wpcore-manager.sh | sudo bash"
+fi
+for cmd in curl sha256sum; do
+  command -v "$cmd" >/dev/null 2>&1 || die "$cmd is needed (apt install $cmd)"
+done
 
-echo -e "\n${BOLD}wpcore installer${RESET}\n"
+# The newest release: GitHub redirects releases/latest to the newest release's tag page.
+if [[ -z "$VERSION" ]]; then
+  [[ -z "$BASE" ]] || die "--version is needed with WPCORE_DOWNLOAD_BASE"
+  latest="$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/$SLUG/releases/latest")" ||
+    die "cannot reach github.com/$SLUG"
+  VERSION="${latest##*/}"
+  [[ "$VERSION" =~ $TAG_RE ]] || die "github.com/$SLUG has no release yet"
+fi
 
-# ── Check for wget or curl ────────────────────────────────────
-if command -v wget &>/dev/null; then
-    DOWNLOADER="wget"
-elif command -v curl &>/dev/null; then
-    DOWNLOADER="curl"
+BASE="${BASE:-https://github.com/$SLUG/releases/download/$VERSION}"
+step "wpcore $VERSION from $SLUG"
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+step "Downloading wpcore"
+curl -fsSL -o "$tmp/wpcore" "$BASE/wpcore" || die "cannot download $BASE/wpcore"
+curl -fsSL -o "$tmp/wpcore.sha256" "$BASE/wpcore.sha256" || die "cannot download $BASE/wpcore.sha256"
+
+step "Checking it against wpcore.sha256"
+(cd "$tmp" && sha256sum --check --quiet --strict wpcore.sha256) ||
+  die "wpcore does not match its checksum; nothing was installed"
+bash -n "$tmp/wpcore" || die "the downloaded wpcore does not parse; nothing was installed"
+
+if ((DRY_RUN)); then
+  step "Dry run: wpcore $VERSION checks out; it would go in $BIN_DIR/wpcore"
+  exit 0
+fi
+
+# Into place in one step: a copy next to the target, then a rename over it.
+mkdir -p "$BIN_DIR"
+install -m 0755 "$tmp/wpcore" "$BIN_DIR/.wpcore.new"
+mv -f "$BIN_DIR/.wpcore.new" "$BIN_DIR/wpcore"
+step "Installed $BIN_DIR/wpcore ($VERSION)"
+
+case ":$PATH:" in
+  *":$BIN_DIR:"*) ;;
+  *) printf 'note: %s is not in PATH; add it in your shell profile\n' "$BIN_DIR" ;;
+esac
+
+# Offer `wpcore init` on a first install. Piped into bash, stdin is this script, so ask the terminal.
+if [[ -f /etc/wpcore.conf || -n "${WPCORE_BIN_DIR:-}" ]]; then
+  step "Done. Run 'wpcore help' to get started."
+elif { : </dev/tty; } 2>/dev/null; then
+  read -rp "Run 'wpcore init' now, to write /etc/wpcore.conf and tab completion? [Y/n] " answer </dev/tty
+  if [[ "${answer:-Y}" =~ ^[Yy]$ ]]; then
+    "$BIN_DIR/wpcore" init
+  else
+    step "Skipped. Run 'sudo wpcore init' when you are ready."
+  fi
 else
-    die "Neither wget nor curl is available. Install one and re-run."
+  step "Next: run 'sudo wpcore init' to write /etc/wpcore.conf and tab completion."
 fi
-
-# ── Download wpcore ───────────────────────────────────────────
-info "Downloading wpcore from GitHub..."
-if [[ "$DOWNLOADER" == "wget" ]]; then
-    wget -q -O "$BINARY" "$RAW_URL"
-else
-    curl -fsSL -o "$BINARY" "$RAW_URL"
-fi
-
-# ── Make executable ───────────────────────────────────────────
-chmod +x "$BINARY"
-success "Installed: $BINARY"
-
-# ── Verify ────────────────────────────────────────────────────
-if ! command -v wpcore &>/dev/null; then
-    warn "$INSTALL_DIR is not in PATH. Add it:"
-    echo "    export PATH=\"\$PATH:$INSTALL_DIR\""
-fi
-
-# ── Offer to initialize ───────────────────────────────────────
-echo ""
-echo -e "${BOLD}wpcore has been installed.${RESET}"
-echo ""
-echo "  Next step — run initialization to create the config file"
-echo "  (/etc/wpcore.conf) and install Bash tab completion:"
-echo ""
-echo -e "    ${CYAN}sudo wpcore init${RESET}"
-echo ""
-
-# If running in a non-interactive pipe (| sudo bash), skip prompt
-if [[ -t 0 ]]; then
-    read -rp "Run 'wpcore init' now? [Y/n] " answer
-    answer="${answer:-Y}"
-    if [[ "$answer" =~ ^[Yy]$ ]]; then
-        echo ""
-        wpcore init
-    else
-        info "Skipped. Run 'sudo wpcore init' when ready."
-    fi
-else
-    info "Run 'sudo wpcore init' to finish setup."
-fi
-
-echo ""
-success "Done! Run 'wpcore help' to get started."
-echo ""

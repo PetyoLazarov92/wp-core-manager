@@ -1,0 +1,30 @@
+name: Check
+
+# The same checks the release runs, on every push and pull request.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash -n wpcore install.sh
+      - name: shellcheck
+        run: |
+          # wpcore from before releases is held at error level until it is cleaned up.
+          shellcheck -S error wpcore
+          shellcheck -x install.sh
+      - name: install.sh against a local release
+        run: |
+          v="$(cat VERSION)"
+          mkdir -p /tmp/rel /tmp/bin
+          cp wpcore /tmp/rel/ && (cd /tmp/rel && sha256sum wpcore > wpcore.sha256)
+          WPCORE_DOWNLOAD_BASE="file:///tmp/rel" bash install.sh --version "v${v}" --dry-run
+          WPCORE_DOWNLOAD_BASE="file:///tmp/rel" WPCORE_BIN_DIR=/tmp/bin bash install.sh --version "v${v}" </dev/null
+          cmp wpcore /tmp/bin/wpcore && /tmp/bin/wpcore help >/dev/null

@@ -1,5 +1,6 @@
 # wpcore — WordPress Multi-Core Manager
 
+[![Version](https://img.shields.io/badge/version-1.0.0-4EAA25)](CHANGELOG.md)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Shell: Bash](https://img.shields.io/badge/Shell-Bash-4EAA25?logo=gnubash&logoColor=white)
 ![Platform: Linux](https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux&logoColor=black)
@@ -68,20 +69,31 @@ sudo wpcore switch local.mysite.com 6.7.1
 ### Quick Install (recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/install.sh | sudo bash
+curl -fsSL https://webtimeless.cloud/wpcore-manager.sh | sudo bash
 ```
 
 This will:
-1. Download `wpcore` to `/usr/local/bin/wpcore`
-2. Make it executable
-3. Prompt you to run `wpcore init` to create the config file and install Bash completion
+1. Download the newest [release](https://github.com/PetyoLazarov92/wp-core-manager/releases)'s `wpcore` and check it against its `wpcore.sha256`
+2. Put it in `/usr/local/bin/wpcore` in one step, so a failed download never leaves half a script
+3. Offer to run `wpcore init` to create the config file and install Bash completion
+
+`webtimeless.cloud/wpcore-manager.sh` is the release's `install.sh`; the same
+works straight from GitHub, and takes a release or a dry run:
+
+```bash
+curl -fsSLO https://github.com/PetyoLazarov92/wp-core-manager/releases/latest/download/install.sh
+bash install.sh --dry-run               # download and check, install nothing
+sudo bash install.sh --version v1.0.0   # a given release
+```
 
 ### Manual Install
 
 ```bash
-sudo curl -fsSL https://raw.githubusercontent.com/PetyoLazarov92/wp-core-manager/master/wpcore \
-    -o /usr/local/bin/wpcore
-sudo chmod +x /usr/local/bin/wpcore
+cd /tmp
+curl -fsSLO https://github.com/PetyoLazarov92/wp-core-manager/releases/latest/download/wpcore
+curl -fsSLO https://github.com/PetyoLazarov92/wp-core-manager/releases/latest/download/wpcore.sha256
+sha256sum --check wpcore.sha256
+sudo install -m 0755 wpcore /usr/local/bin/wpcore
 sudo wpcore init
 ```
 
@@ -254,6 +266,13 @@ Contributions, bug reports, and feature requests are welcome!
 5. Open a Pull Request
 
 Please follow existing code style (Bash strict mode, `set -euo pipefail`, meaningful comments).
+
+---
+
+## Changelog
+
+Every release and what it changed is in [CHANGELOG.md](CHANGELOG.md), and on
+[webtimeless.cloud](https://webtimeless.cloud/changelog/wpcore-manager/).
 
 ---
 
