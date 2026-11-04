@@ -1,0 +1,11 @@
+---
+description: Wording for wpcore's output, errors and docs
+alwaysApply: true
+---
+
+# User-facing copy
+
+- Short, plain, specific: say what is wrong and what to do ("core 6.8 is not
+  installed: sudo wpcore add 6.8"), not that "an error occurred".
+- Name real things: paths, commands, versions, in `code` style in docs.
+- No em dashes in new text. No exclamation marks.

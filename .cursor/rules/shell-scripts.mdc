@@ -1,0 +1,25 @@
+---
+description: Bash style for wpcore and its installer
+globs: ["wpcore", "install.sh"]
+---
+
+# Shell scripts
+
+- `#!/usr/bin/env bash` and `set -euo pipefail`.
+- `wpcore` logs with its own `info`, `success`, `warn` and `die`; the
+  installer keeps its own small set, since it runs before wpcore is there.
+- Quote every expansion. Use arrays for argument lists. No `eval`. Never build
+  a command from user input as a string. Check a version argument against a
+  pattern before it reaches a path or a URL.
+- Commands that change files need root and say so (`sudo wpcore add 6.8`);
+  read-only ones (`list`, `sites`, `status`) work without it.
+- Replace files atomically: write a temp file in the same folder, then `mv`.
+  The installer puts `wpcore` in place that way, so a failed download never
+  leaves half a script in `/usr/local/bin`.
+- Downloads are checked before use: the installer verifies `wpcore.sha256`
+  with `sha256sum --check` and runs `bash -n` on the download before it
+  installs anything.
+- Questions read from the terminal (`< /dev/tty`), so `curl ... | sudo bash`
+  can still ask them; without a terminal, print the next step instead.
+- Under `set -e`, a final `cond && cmd` returns 1 when `cond` is false; use
+  `if` for anything that is not the last word.

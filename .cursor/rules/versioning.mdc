@@ -1,0 +1,27 @@
+---
+description: Version bump and changelog rules
+alwaysApply: true
+---
+
+# Versioning
+
+Semver in `VERSION` (one line, `X.Y.Z`). The release workflow refuses a tag
+that does not match it. Bump it with every shipped change, once per chat
+session.
+
+Keep three places in sync:
+
+- `VERSION`
+- `README.md` badge on line 3: `![Version](https://img.shields.io/badge/version-X.Y.Z-4EAA25)`
+- `CHANGELOG.md`: a new section at the top
+
+| Bump | When |
+| --- | --- |
+| patch | fix, refactor, docs, CI |
+| minor | a new command, option or config key with a default |
+| major | a breaking change: a command or argument removed or renamed, a config key changed, a linked site laid out differently (see AGENTS.md rule 1) |
+
+Changelog format: `### vX.Y.Z (YYYY-MM-DD)`, `*` bullets, a bolded area
+ending with a colon, present tense, what the user notices. Areas: `wpcore:`,
+`Installer:`, `Fix:`, `Docs:`, `Repo:`. No em dashes. The release notes are
+the tag's section, and webtimeless.cloud's changelog reads the same file.
