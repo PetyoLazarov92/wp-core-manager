@@ -63,7 +63,7 @@ again.
 
 Only when the user asks to release: tag the release commit with a signed tag
 that matches `VERSION`, and push it only when they ask. The push starts
-`release.yml`, which publishes the GitHub release, so it is public at once.
+`release.yml`, which publishes the GitHub release, so it is public at once. Its last job, `site.yml`, tells webtimeless.cloud, which rebuilds with the release within minutes (with the `SITE_DISPATCH_TOKEN` secret; without it, the site's daily build shows it).
 
 ```bash
 git tag -s v1.1.0 -m "v1.1.0"

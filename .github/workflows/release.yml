@@ -45,3 +45,9 @@ jobs:
           cat wpcore.sha256
           gh release create "${GITHUB_REF_NAME}" --verify-tag --title "${GITHUB_REF_NAME}" --notes-file notes.md \
             wpcore wpcore.sha256 install.sh
+
+  # Once the release is out, the site rebuilds with it.
+  site:
+    needs: release
+    uses: ./.github/workflows/site.yml
+    secrets: inherit
