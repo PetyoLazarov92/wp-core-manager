@@ -6,6 +6,7 @@
 ![Platform: Linux](https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux&logoColor=black)
 ![Requires Root](https://img.shields.io/badge/Requires-sudo-red)
 ![WP-CLI Compatible](https://img.shields.io/badge/WP--CLI-Compatible-21759B?logo=wordpress&logoColor=white)
+[![Docs](https://img.shields.io/badge/docs-webtimeless.cloud-6d5dfc)](https://webtimeless.cloud/docs/wpcore-manager/)
 [![Latest WordPress](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.wordpress.org%2Fcore%2Fversion-check%2F1.7%2F&query=%24.offers%5B0%5D.version&label=latest%20WordPress&logo=wordpress&logoColor=white&color=21759B&cacheSeconds=3600)](https://wordpress.org/download/)
 
 A **single Bash script** that lets one server host **dozens of WordPress sites while sharing a small set of versioned WordPress cores** stored in a central directory. Switch any site between core versions in seconds, with zero downtime and automatic OPcache flushing.
@@ -279,5 +280,8 @@ Every release and what it changed is in [CHANGELOG.md](CHANGELOG.md), and on
 ## License
 
 Released under the [MIT License](LICENSE).
+
+Docs, guides and comparisons with other local WordPress tools are on
+[webtimeless.cloud](https://webtimeless.cloud/).
 
 Copyright © 2026 Petyo Lazarov
