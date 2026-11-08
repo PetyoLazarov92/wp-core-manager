@@ -55,5 +55,5 @@ fix(wpcore): check the new core before removing the old links
 ## Names
 
 Examples in code, comments, docs, the changelog and commit messages use
-made-up names only: `local.acme.test`, `local.shop.test`, a person like Alex
-Morgan.
+made-up names only: `local.spellbook.test`, `local.shop.test`, a person like
+Alex Morgan (the full set is in AGENTS.md, rule 6).
